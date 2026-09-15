@@ -14,8 +14,6 @@ engine = create_engine(DATABASE_URL)
 
 SessionLocal = sessionmaker(bind=engine)
 
-Base.metadata.create_all(bind=engine)
-
 def get_db():
     db = SessionLocal()
     try:

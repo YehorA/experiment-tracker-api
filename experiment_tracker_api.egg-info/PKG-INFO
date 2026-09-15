@@ -7,3 +7,4 @@ Requires-Dist: uvicorn[standard]
 Requires-Dist: sqlalchemy
 Requires-Dist: psycopg[binary]
 Requires-Dist: python-dotenv
+Requires-Dist: alembic
