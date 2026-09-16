@@ -2,7 +2,7 @@ from fastapi import Depends, FastAPI, HTTPException
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models import Project
+from app.models import Project, Experiment
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
@@ -21,6 +21,21 @@ class ProjectResponse(BaseModel):
 class ProjectUpdate(BaseModel):
     name: str | None = None 
     description: str | None = None
+
+#--------------------------------------------------------------
+
+class ExperimentCreate(BaseModel):
+    name: str
+    description: str | None = None
+
+
+class ExperimentResponse(BaseModel):
+    id: int
+    project_id: int
+    name: str
+    description: str | None = None
+
+#--------------------------------------------------------------
 
 @app.get("/")
 def root():
@@ -97,3 +112,51 @@ def patch_project(
     db.refresh(project)
 
     return project
+
+#--------------------------------------------------------------
+
+@app.post(
+    "/projects/{project_id}/experiments",
+    status_code=201,
+    response_model=ExperimentResponse,
+)
+def create_experiment(
+    project_id: int,
+    experiment: ExperimentCreate,
+    db: Session = Depends(get_db),
+):
+    project = db.query(Project).filter(Project.id == project_id).first()
+
+    if project is None:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    new_experiment = Experiment(
+        project_id=project_id,
+        name=experiment.name,
+        description=experiment.description,
+    )
+
+    db.add(new_experiment)
+    db.commit()
+    db.refresh(new_experiment)
+    
+    return new_experiment
+
+@app.get(
+    "/projects/{project_id}/experiments",
+    response_model=list[ExperimentResponse],
+)
+def get_experiments(
+    project_id: int,
+    db: Session = Depends(get_db),
+):
+    project = db.query(Project).filter(Project.id == project_id).first()
+    
+    if project is None:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    return (
+        db.query(Experiment)
+        .filter(Experiment.project_id == project_id)
+        .all()
+    )   
