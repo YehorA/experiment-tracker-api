@@ -9,20 +9,25 @@ from pydantic import BaseModel
 
 app = FastAPI()
 
+
 class ProjectCreate(BaseModel):
     name: str
     description: str | None = None
+
 
 class ProjectResponse(BaseModel):
     id: int
     name: str
     description: str | None = None
 
+
 class ProjectUpdate(BaseModel):
-    name: str | None = None 
+    name: str | None = None
     description: str | None = None
 
-#--------------------------------------------------------------
+
+# --------------------------------------------------------------
+
 
 class ExperimentCreate(BaseModel):
     name: str
@@ -35,18 +40,25 @@ class ExperimentResponse(BaseModel):
     name: str
     description: str | None = None
 
-#--------------------------------------------------------------
+class ExperimentUpdate(BaseModel):
+    name: str | None = None
+    description: str | None = None
+
+
+# --------------------------------------------------------------
+
 
 @app.get("/")
 def root():
     return {"message": "Experiment Tracker API"}
 
+
 @app.post("/projects", status_code=201, response_model=ProjectResponse)
 def create_project(
-        project: ProjectCreate,
-        db: Session = Depends(get_db),
-    ):
-    
+    project: ProjectCreate,
+    db: Session = Depends(get_db),
+):
+
     new_project = Project(
         name=project.name,
         description=project.description,
@@ -58,9 +70,11 @@ def create_project(
 
     return new_project
 
+
 @app.get("/projects", response_model=list[ProjectResponse])
 def get_projects(db: Session = Depends(get_db)):
     return db.query(Project).all()
+
 
 @app.get("/projects/{project_id}", response_model=ProjectResponse)
 def get_project(project_id: int, db: Session = Depends(get_db)):
@@ -70,6 +84,7 @@ def get_project(project_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Project not found")
 
     return project
+
 
 @app.delete("/projects/{project_id}")
 def delete_project(
@@ -85,6 +100,7 @@ def delete_project(
     db.commit()
 
     return {"message": "Project deleted"}
+
 
 @app.patch("/projects/{project_id}", response_model=ProjectResponse)
 def patch_project(
@@ -113,7 +129,9 @@ def patch_project(
 
     return project
 
-#--------------------------------------------------------------
+
+# --------------------------------------------------------------
+
 
 @app.post(
     "/projects/{project_id}/experiments",
@@ -139,8 +157,9 @@ def create_experiment(
     db.add(new_experiment)
     db.commit()
     db.refresh(new_experiment)
-    
+
     return new_experiment
+
 
 @app.get(
     "/projects/{project_id}/experiments",
@@ -151,12 +170,105 @@ def get_experiments(
     db: Session = Depends(get_db),
 ):
     project = db.query(Project).filter(Project.id == project_id).first()
+
+    if project is None:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    return db.query(Experiment).filter(Experiment.project_id == project_id).all()
+
+
+@app.get(
+    "/projects/{project_id}/experiments/{experiment_id}",
+    response_model=ExperimentResponse,
+)
+def get_experiment(project_id: int, experiment_id: int, db: Session = Depends(get_db)):
+    project = db.query(Project).filter(Project.id == project_id).first()
+
+    if project is None:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    experiment = (
+        db.query(Experiment)
+        .filter(
+            Experiment.id == experiment_id,
+            Experiment.project_id == project_id,
+        )
+        .first()
+    )
+
+    if experiment is None:
+        raise HTTPException(status_code=404, detail="Experiment not found")
+
+    return experiment
+
+
+@app.patch(
+    "/projects/{project_id}/experiments/{experiment_id}",
+    response_model=ExperimentResponse,
+)
+def patch_experiment(
+    project_id: int,
+    experiment_id: int,
+    experiment_patch: ExperimentUpdate,
+    db: Session = Depends(get_db),
+):
+    project = db.query(Project).filter(Project.id == project_id).first()
     
     if project is None:
         raise HTTPException(status_code=404, detail="Project not found")
-    
-    return (
+
+    experiment = (
         db.query(Experiment)
-        .filter(Experiment.project_id == project_id)
-        .all()
-    )   
+        .filter(
+            Experiment.id == experiment_id,
+            Experiment.project_id == project_id,
+        )
+        .first()
+    )
+    
+    if experiment is None:
+        raise HTTPException(status_code=404, detail="Experiment not found")
+
+    if "name" in experiment_patch.model_fields_set and experiment_patch.name is None:
+        raise HTTPException(
+            status_code=422,
+            detail="Experiment name cannot be null",
+        )
+
+    updates = experiment_patch.model_dump(exclude_unset=True)
+
+    for field_name, value in updates.items():
+        setattr(experiment, field_name, value)
+
+    db.commit()
+    db.refresh(experiment)
+
+    return experiment
+
+@app.delete("/projects/{project_id}/experiments/{experiment_id}")
+def delete_experiment(
+    project_id: int,
+    experiment_id: int,
+    db: Session = Depends(get_db),
+):
+    project = db.query(Project).filter(Project.id == project_id).first()
+
+    if project is None:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    experiment = (
+            db.query(Experiment)
+            .filter(
+                Experiment.id == experiment_id,
+                Experiment.project_id == project_id,
+            )
+            .first()
+        )
+        
+    if experiment is None:
+        raise HTTPException(status_code=404, detail="Experiment not found")
+
+    db.delete(experiment)
+    db.commit()
+
+    return {"message": "Experiment deleted"}
