@@ -1,11 +1,12 @@
 from fastapi import Depends, FastAPI, HTTPException
 from sqlalchemy.orm import Session
+from datetime import datetime
 
 from app.database import get_db
 from app.models import Project, Experiment
 
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 app = FastAPI()
 
@@ -47,6 +48,21 @@ class ExperimentUpdate(BaseModel):
 
 # --------------------------------------------------------------
 
+class RunCreate(BaseModel):
+    status: str = "pending"
+    parameters: dict[str, object] = Field(default_factory=dict)
+    metrics: dict[str, float] = Field(default_factory=dict)
+
+
+class RunResponse(BaseModel):
+    id: int
+    experiment_id: int
+    status: str
+    parameters: dict[str, object]
+    metrics: dict[str, float]
+    created_at: datetime
+
+# --------------------------------------------------------------
 
 @app.get("/")
 def root():
