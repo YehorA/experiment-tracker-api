@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from datetime import datetime
 
 from app.database import get_db
-from app.models import Project, Experiment
+from app.models import Project, Experiment, Run
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
@@ -288,3 +288,54 @@ def delete_experiment(
     db.commit()
 
     return {"message": "Experiment deleted"}
+
+@app.post(
+    "/experiments/{experiment_id}/runs",
+    status_code=201,
+    response_model=RunResponse,
+)
+def create_run(
+    experiment_id: int,
+    run: RunCreate,
+    db: Session = Depends(get_db),
+):
+    experiment = db.query(Experiment).filter(Experiment.id == experiment_id).first()
+
+    if experiment is None:
+        raise HTTPException(status_code=404, detail="Experiment not found")
+
+    new_run = Run(
+        experiment_id=experiment_id,
+        status=run.status,
+        parameters=run.parameters,
+        metrics=run.metrics,
+    )
+
+    db.add(new_run)
+    db.commit()
+    db.refresh(new_run)
+
+    return new_run
+
+@app.get(
+    "/experiments/{experiment_id}/runs",
+    response_model=list[RunResponse],
+)
+def get_runs(
+    experiment_id: int,
+    db: Session = Depends(get_db),
+):
+    experiment = (
+        db.query(Experiment)
+        .filter(Experiment.id == experiment_id)
+        .first()
+    )
+
+    if experiment is None:
+        raise HTTPException(status_code=404, detail="Experiment not found")
+
+    return (
+        db.query(Run)
+        .filter(Run.experiment_id == experiment_id)
+        .all()
+    )
