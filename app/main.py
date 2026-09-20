@@ -1,6 +1,7 @@
 from fastapi import Depends, FastAPI, HTTPException
 from sqlalchemy.orm import Session
 from datetime import datetime
+from typing import Literal
 
 from app.database import get_db
 from app.models import Project, Experiment, Run
@@ -9,6 +10,8 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
 app = FastAPI()
+
+RunStatus = Literal["pending", "running", "completed", "failed"]
 
 
 class ProjectCreate(BaseModel):
@@ -49,7 +52,7 @@ class ExperimentUpdate(BaseModel):
 # --------------------------------------------------------------
 
 class RunCreate(BaseModel):
-    status: str = "pending"
+    status: RunStatus = "pending"
     parameters: dict[str, object] = Field(default_factory=dict)
     metrics: dict[str, float] = Field(default_factory=dict)
 
@@ -289,6 +292,8 @@ def delete_experiment(
 
     return {"message": "Experiment deleted"}
 
+# --------------------------------------------------------------
+
 @app.post(
     "/experiments/{experiment_id}/runs",
     status_code=201,
@@ -323,6 +328,7 @@ def create_run(
 )
 def get_runs(
     experiment_id: int,
+    status: RunStatus | None = None,
     db: Session = Depends(get_db),
 ):
     experiment = (
@@ -334,8 +340,21 @@ def get_runs(
     if experiment is None:
         raise HTTPException(status_code=404, detail="Experiment not found")
 
-    return (
-        db.query(Run)
-        .filter(Run.experiment_id == experiment_id)
-        .all()
-    )
+    query = db.query(Run).filter(Run.experiment_id == experiment_id)
+
+    if status is not None:
+        query = query.filter(Run.status == status)
+
+    return query.all()
+
+@app.get("/runs/{run_id}", response_model=RunResponse)
+def get_run(
+    run_id: int,
+    db: Session = Depends(get_db),
+):
+    run = db.query(Run).filter(Run.id == run_id).first()
+
+    if run is None:
+        raise HTTPException(status_code=404, detail="Run not found")
+
+    return run
