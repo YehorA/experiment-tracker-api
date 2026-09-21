@@ -65,6 +65,11 @@ class RunResponse(BaseModel):
     metrics: dict[str, float]
     created_at: datetime
 
+class RunUpdate(BaseModel):
+    status: RunStatus | None = None
+    parameters: dict[str, object] | None = None
+    metrics: dict[str, float] | None = None
+
 # --------------------------------------------------------------
 
 @app.get("/")
@@ -358,3 +363,49 @@ def get_run(
         raise HTTPException(status_code=404, detail="Run not found")
 
     return run
+
+@app.patch("/runs/{run_id}", response_model=RunResponse)
+def patch_run(
+    run_id: int,
+    run_patch: RunUpdate,
+    db: Session = Depends(get_db),
+):
+    run = db.query(Run).filter(Run.id == run_id).first()
+
+    if run is None:
+        raise HTTPException(status_code=404, detail="Run not found")
+
+    for field_name in ("status", "parameters", "metrics"):
+        if (
+            field_name in run_patch.model_fields_set
+            and getattr(run_patch, field_name) is None
+        ):
+            raise HTTPException(
+                status_code=422,
+                detail=f"{field_name} cannot be null",
+            )
+
+    updates = run_patch.model_dump(exclude_unset=True)
+
+    for field_name, value in updates.items():
+        setattr(run, field_name, value)
+
+    db.commit()
+    db.refresh(run)
+
+    return run
+
+@app.delete("/runs/{run_id}")
+def delete_run(
+    run_id: int,
+    db: Session = Depends(get_db),
+):
+    run = db.query(Run).filter(Run.id == run_id).first()
+
+    if run is None:
+        raise HTTPException(status_code=404, detail="Run not found")
+
+    db.delete(run)
+    db.commit()
+
+    return {"message": "Run deleted"}
