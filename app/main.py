@@ -1,4 +1,5 @@
 from fastapi import Depends, FastAPI, HTTPException
+from sqlalchemy import Float, cast
 from sqlalchemy.orm import Session
 from datetime import datetime
 from typing import Literal
@@ -6,7 +7,6 @@ from typing import Literal
 from app.database import get_db
 from app.models import Project, Experiment, Run
 
-from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
 app = FastAPI()
@@ -334,6 +334,8 @@ def create_run(
 def get_runs(
     experiment_id: int,
     status: RunStatus | None = None,
+    metric_name: str | None = None,
+    min_metric: float | None = None,
     db: Session = Depends(get_db),
 ):
     experiment = (
@@ -345,10 +347,21 @@ def get_runs(
     if experiment is None:
         raise HTTPException(status_code=404, detail="Experiment not found")
 
+    if (metric_name is None) != (min_metric is None):
+        raise HTTPException(
+            status_code=422,
+            detail="metric_name and min_metric must be provided together",
+        )
+
     query = db.query(Run).filter(Run.experiment_id == experiment_id)
 
     if status is not None:
         query = query.filter(Run.status == status)
+
+    if metric_name is not None and min_metric is not None:
+        query = query.filter(
+            cast(Run.metrics[metric_name].astext, Float) >= min_metric
+        )
 
     return query.all()
 
