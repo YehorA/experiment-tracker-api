@@ -8,3 +8,5 @@ Requires-Dist: sqlalchemy
 Requires-Dist: psycopg[binary]
 Requires-Dist: python-dotenv
 Requires-Dist: alembic
+Requires-Dist: pytest
+Requires-Dist: httpx
