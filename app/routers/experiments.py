@@ -8,6 +8,7 @@ from app.schemas import (
     ExperimentResponse,
     ExperimentUpdate,
 )
+from app.dependencies import get_experiment_or_404, get_project_or_404
 
 router = APIRouter(prefix="/projects/{project_id}/experiments", tags=["experiments"])
 
@@ -20,10 +21,7 @@ def create_experiment(
     experiment: ExperimentCreate,
     db: Session = Depends(get_db),
 ):
-    project = db.query(Project).filter(Project.id == project_id).first()
-
-    if project is None:
-        raise HTTPException(status_code=404, detail="Project not found")
+    get_project_or_404(project_id, db)
 
     new_experiment = Experiment(
         project_id=project_id,
@@ -45,10 +43,7 @@ def get_experiments(
     project_id: int,
     db: Session = Depends(get_db),
 ):
-    project = db.query(Project).filter(Project.id == project_id).first()
-
-    if project is None:
-        raise HTTPException(status_code=404, detail="Project not found")
+    get_project_or_404(project_id, db)
 
     return db.query(Experiment).filter(Experiment.project_id == project_id).all()
 
@@ -57,22 +52,7 @@ def get_experiments(
     response_model=ExperimentResponse,
 )
 def get_experiment(project_id: int, experiment_id: int, db: Session = Depends(get_db)):
-    project = db.query(Project).filter(Project.id == project_id).first()
-
-    if project is None:
-        raise HTTPException(status_code=404, detail="Project not found")
-
-    experiment = (
-        db.query(Experiment)
-        .filter(
-            Experiment.id == experiment_id,
-            Experiment.project_id == project_id,
-        )
-        .first()
-    )
-
-    if experiment is None:
-        raise HTTPException(status_code=404, detail="Experiment not found")
+    experiment = get_experiment_or_404(experiment_id, project_id, db)
 
     return experiment
 
@@ -86,22 +66,7 @@ def patch_experiment(
     experiment_patch: ExperimentUpdate,
     db: Session = Depends(get_db),
 ):
-    project = db.query(Project).filter(Project.id == project_id).first()
-    
-    if project is None:
-        raise HTTPException(status_code=404, detail="Project not found")
-
-    experiment = (
-        db.query(Experiment)
-        .filter(
-            Experiment.id == experiment_id,
-            Experiment.project_id == project_id,
-        )
-        .first()
-    )
-    
-    if experiment is None:
-        raise HTTPException(status_code=404, detail="Experiment not found")
+    experiment = get_experiment_or_404(experiment_id, project_id, db)
 
     if "name" in experiment_patch.model_fields_set and experiment_patch.name is None:
         raise HTTPException(
@@ -125,22 +90,7 @@ def delete_experiment(
     experiment_id: int,
     db: Session = Depends(get_db),
 ):
-    project = db.query(Project).filter(Project.id == project_id).first()
-
-    if project is None:
-        raise HTTPException(status_code=404, detail="Project not found")
-
-    experiment = (
-            db.query(Experiment)
-            .filter(
-                Experiment.id == experiment_id,
-                Experiment.project_id == project_id,
-            )
-            .first()
-        )
-        
-    if experiment is None:
-        raise HTTPException(status_code=404, detail="Experiment not found")
+    experiment = get_experiment_or_404(experiment_id, project_id, db)
 
     db.delete(experiment)
     db.commit()

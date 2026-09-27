@@ -11,6 +11,8 @@ from app.schemas import (
     RunStatus
 )
 
+from app.dependencies import get_experiment_or_404, get_run_or_404
+
 router = APIRouter(tags=["runs"])
 
 @router.post(
@@ -23,10 +25,7 @@ def create_run(
     run: RunCreate,
     db: Session = Depends(get_db),
 ):
-    experiment = db.query(Experiment).filter(Experiment.id == experiment_id).first()
-
-    if experiment is None:
-        raise HTTPException(status_code=404, detail="Experiment not found")
+    get_experiment_or_404(experiment_id, db)
 
     new_run = Run(
         experiment_id=experiment_id,
@@ -52,14 +51,7 @@ def get_runs(
     min_metric: float | None = None,
     db: Session = Depends(get_db),
 ):
-    experiment = (
-        db.query(Experiment)
-        .filter(Experiment.id == experiment_id)
-        .first()
-    )
-
-    if experiment is None:
-        raise HTTPException(status_code=404, detail="Experiment not found")
+    get_experiment_or_404(experiment_id, db)
 
     if (metric_name is None) != (min_metric is None):
         raise HTTPException(
@@ -84,10 +76,7 @@ def get_run(
     run_id: int,
     db: Session = Depends(get_db),
 ):
-    run = db.query(Run).filter(Run.id == run_id).first()
-
-    if run is None:
-        raise HTTPException(status_code=404, detail="Run not found")
+    run = get_run_or_404(run_id, db)
 
     return run
 
@@ -97,10 +86,7 @@ def patch_run(
     run_patch: RunUpdate,
     db: Session = Depends(get_db),
 ):
-    run = db.query(Run).filter(Run.id == run_id).first()
-
-    if run is None:
-        raise HTTPException(status_code=404, detail="Run not found")
+    run = get_run_or_404(run_id, db)
 
     for field_name in ("status", "parameters", "metrics"):
         if (
@@ -127,10 +113,7 @@ def delete_run(
     run_id: int,
     db: Session = Depends(get_db),
 ):
-    run = db.query(Run).filter(Run.id == run_id).first()
-
-    if run is None:
-        raise HTTPException(status_code=404, detail="Run not found")
+    run = get_run_or_404(run_id, db)
 
     db.delete(run)
     db.commit()

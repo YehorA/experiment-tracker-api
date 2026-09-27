@@ -4,10 +4,9 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import Project
 from app.schemas import ProjectCreate, ProjectResponse, ProjectUpdate
-
+from app.dependencies import get_project_or_404
 
 router = APIRouter(prefix="/projects", tags=["projects"])
-
 
 @router.post("", status_code=201, response_model=ProjectResponse)
 def create_project(
@@ -36,10 +35,7 @@ def get_project(
     project_id: int,
     db: Session = Depends(get_db),
 ):
-    project = db.query(Project).filter(Project.id == project_id).first()
-
-    if project is None:
-        raise HTTPException(status_code=404, detail="Project not found")
+    project = get_project_or_404(project_id, db)
 
     return project
 
@@ -49,10 +45,7 @@ def delete_project(
     project_id: int,
     db: Session = Depends(get_db),
 ):
-    project = db.query(Project).filter(Project.id == project_id).first()
-
-    if project is None:
-        raise HTTPException(status_code=404, detail="Project not found")
+    project = get_project_or_404(project_id, db)
 
     db.delete(project)
     db.commit()
@@ -66,10 +59,7 @@ def patch_project(
     project_patch: ProjectUpdate,
     db: Session = Depends(get_db),
 ):
-    project = db.query(Project).filter(Project.id == project_id).first()
-
-    if project is None:
-        raise HTTPException(status_code=404, detail="Project not found")
+    project = get_project_or_404(project_id, db)
 
     if "name" in project_patch.model_fields_set and project_patch.name is None:
         raise HTTPException(
