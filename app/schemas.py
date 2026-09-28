@@ -6,8 +6,8 @@ from pydantic import BaseModel, Field
 RunStatus = Literal["pending", "running", "completed", "failed"]
 
 class ProjectCreate(BaseModel):
-    name: str
-    description: str | None = None
+    name: str = Field(min_length=1, max_length=200)
+    description: str | None = Field(default=None, max_length=1000)
 
 
 class ProjectResponse(BaseModel):
@@ -17,16 +17,16 @@ class ProjectResponse(BaseModel):
 
 
 class ProjectUpdate(BaseModel):
-    name: str | None = None
-    description: str | None = None
+    name: str | None = Field(default=None, min_length=1, max_length=200)
+    description: str | None = Field(default=None, max_length=1000)
 
 
 # --------------------------------------------------------------
 
 
 class ExperimentCreate(BaseModel):
-    name: str
-    description: str | None = None
+    name: str = Field(min_length=1, max_length=200)
+    description: str | None = Field(default=None, max_length=1000)
 
 
 class ExperimentResponse(BaseModel):
@@ -36,8 +36,8 @@ class ExperimentResponse(BaseModel):
     description: str | None = None
 
 class ExperimentUpdate(BaseModel):
-    name: str | None = None
-    description: str | None = None
+    name: str | None = Field(default=None, min_length=1, max_length=200)
+    description: str | None = Field(default=None, max_length=1000)
 
 
 # --------------------------------------------------------------
@@ -51,7 +51,7 @@ class RunCreate(BaseModel):
 class RunResponse(BaseModel):
     id: int
     experiment_id: int
-    status: str
+    status: RunStatus
     parameters: dict[str, object]
     metrics: dict[str, float]
     created_at: datetime

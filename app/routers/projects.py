@@ -61,6 +61,12 @@ def patch_project(
 ):
     project = get_project_or_404(project_id, db)
 
+    if not project_patch.model_fields_set:
+        raise HTTPException(
+            status_code=422,
+            detail="At least one field must be provided",
+        )
+
     if "name" in project_patch.model_fields_set and project_patch.name is None:
         raise HTTPException(
             status_code=422,

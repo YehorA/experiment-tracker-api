@@ -88,6 +88,12 @@ def patch_run(
 ):
     run = get_run_or_404(run_id, db)
 
+    if not run_patch.model_fields_set:
+        raise HTTPException(
+            status_code=422,
+            detail="At least one field must be provided",
+        )
+
     for field_name in ("status", "parameters", "metrics"):
         if (
             field_name in run_patch.model_fields_set

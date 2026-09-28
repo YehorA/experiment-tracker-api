@@ -365,3 +365,32 @@ def test_metric_filter_requires_both_parameters():
     )
 
     assert missing_name_response.status_code == 422
+
+def test_create_project_rejects_empty_name():
+    response = client.post(
+        "/projects",
+        json={
+            "name": "",
+            "description": "Invalid project",
+        },
+    )
+
+    assert response.status_code == 422
+
+def test_patch_project_rejects_empty_body():
+    create_response = client.post(
+        "/projects",
+        json={
+            "name": "Test Project",
+            "description": "Testing",
+        },
+    )
+
+    project_id = create_response.json()["id"]
+
+    response = client.patch(
+        f"/projects/{project_id}",
+        json={},
+    )
+
+    assert response.status_code == 422
