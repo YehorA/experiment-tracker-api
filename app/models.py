@@ -21,7 +21,9 @@ class Experiment(Base):
     __tablename__ = "experiments"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"))
+    project_id: Mapped[int] = mapped_column(
+        ForeignKey("projects.id", ondelete="CASCADE")
+    )
     name: Mapped[str] = mapped_column(String(200))
     description: Mapped[str | None] = mapped_column(String(1000), nullable=True)
 
@@ -30,7 +32,7 @@ class Run(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     experiment_id: Mapped[int] = mapped_column(
-        ForeignKey("experiments.id")
+        ForeignKey("experiments.id", ondelete="CASCADE")
     )
     status: Mapped[str] = mapped_column(String(50))
     parameters: Mapped[dict[str, object]] = mapped_column(
