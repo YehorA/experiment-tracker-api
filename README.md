@@ -259,3 +259,4 @@ The following are intentionally outside the initial V1 scope:
 - Caching
 - Redis
 
+The API is deployment-ready and was successfully deployed with Railway and managed PostgreSQL during V1 development
